@@ -1,0 +1,10 @@
+"use client";
+import { useState } from "react";
+import { useRelay } from "@/components/relay-provider";
+import { Badge, CustomerLink, Empty, NewServiceButton, PageHeading, ViewLink } from "@/components/common";
+import { customerName, personName } from "@/lib/domain/selectors";
+export default function Page() {
+  const {store}=useRelay();const [status,setStatus]=useState("all");const [query,setQuery]=useState("");
+  const sessions=store.sessions.filter(s=>(status==="all"||s.status===status)&&store.customers.some(c=>c.id===s.customerId&&(c.name.includes(query.trim())||c.phone.includes(query.trim())))).sort((a,b)=>b.serviceDate.localeCompare(a.serviceDate));
+  return <><PageHeading title="服务记录" description="每次到店独立记录，服务过程持续留档。" action={<NewServiceButton/>}/><section className="panel"><div className="filter-bar"><input aria-label="搜索服务客户" placeholder="搜索客户姓名 / 手机号" value={query} onChange={e=>setQuery(e.target.value)}/><select aria-label="服务状态" value={status} onChange={e=>setStatus(e.target.value)}><option value="all">全部服务</option><option value="in_progress">服务中</option><option value="scheduled">待到店</option><option value="completed">已完成</option><option value="cancelled">已取消</option></select><span className="filter-count">共 {sessions.length} 条记录</span></div><div className="table-scroll"><table><thead><tr><th>服务时间</th><th>客户</th><th>服务项目</th><th>服务人员</th><th>状态</th><th>客户反馈 / 本次主诉</th><th/></tr></thead><tbody>{sessions.map(s=><tr key={s.id}><td>{s.serviceDate.slice(0,10)}<small className="muted" style={{display:"block"}}>{s.serviceDate.slice(11,16)}</small></td><td><CustomerLink id={s.customerId} name={customerName(store,s.customerId)}/></td><td>{s.serviceType}</td><td>{personName(store,s.staffId)}</td><td><Badge tone={s.status==="in_progress"?"green":s.status==="scheduled"?"amber":"neutral"}>{s.status==="completed"?"已完成":s.status==="in_progress"?"服务中":s.status==="cancelled"?"已取消":"待到店"}</Badge></td><td style={{whiteSpace:"normal",maxWidth:250}}>{s.feedback||s.complaint}</td><td><ViewLink href={`/services/${s.id}`}>查看详情</ViewLink></td></tr>)}</tbody></table></div>{!sessions.length&&<Empty title="没有匹配的服务记录"/>}</section></>;
+}

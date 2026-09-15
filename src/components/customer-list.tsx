@@ -1,0 +1,13 @@
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { useRelay } from "./relay-provider";
+import { Badge, CustomerLink, Empty, PageHeading, ViewLink } from "./common";
+import { Button } from "./ui/button";
+import { businessToday, searchCustomers, recentSessions, packageBalance } from "@/lib/domain/selectors";
+export function CustomerList({initialFilter="all"}:{initialFilter?:string}) {
+  const {store}=useRelay();const [query,setQuery]=useState("");const [filter,setFilter]=useState(initialFilter);
+  const customers=searchCustomers(store,query).filter(c=>filter==="all"||(filter==="new"&&c.firstVisit===businessToday())||(filter==="intent"&&c.tags.includes("高意向"))||c.stage===filter);
+  return <><PageHeading title="客户档案" description="找到客户，接上每一次服务。" action={<Button asChild><Link href="/customers/new"><Plus size={16}/>新建客户</Link></Button>}/><section className="panel"><div className="filter-bar"><input aria-label="搜索客户" placeholder="输入姓名或手机号" value={query} onChange={e=>setQuery(e.target.value)}/><select aria-label="筛选客户" value={filter} onChange={e=>setFilter(e.target.value)}><option value="all">全部客户</option><option value="new">今日新增</option><option value="intent">高意向</option>{["初次到店","体验中","持续服务","待跟进"].map(s=><option key={s}>{s}</option>)}</select><span className="filter-count">共 {customers.length} 位客户</span></div><div className="table-scroll"><table><thead><tr><th>客户 / 手机号</th><th>主要身体问题</th><th>阶段与标签</th><th>最近服务</th><th>剩余权益</th><th/></tr></thead><tbody>{customers.map(c=>{const health=store.healthProfiles.find(h=>h.customerId===c.id);const last=recentSessions(store,c.id)[0];const packages=store.packages.filter(p=>p.customerId===c.id);return <tr key={c.id}><td><CustomerLink id={c.id} name={c.name} sub={c.phone}/></td><td><span style={{display:"block",maxWidth:220,whiteSpace:"normal"}}>{health?.symptoms??"待填写健康问卷"}</span></td><td><div className="tags"><Badge tone="green">{c.stage}</Badge>{c.tags.slice(0,2).map(t=><Badge key={t}>{t}</Badge>)}</div></td><td>{last?<><div>{last.serviceType}</div><small className="muted">{last.serviceDate.slice(0,10)}</small></>:<span className="muted">尚无已完成服务</span>}</td><td>{packages.length?packages.map(p=><div key={p.id}><strong>{packageBalance(store,p).remaining}</strong><span className="muted"> / {p.total} 次</span></div>):<span className="muted">暂无套餐</span>}</td><td><ViewLink href={`/customers/${c.id}`}>打开档案</ViewLink></td></tr>;})}</tbody></table></div>{!customers.length&&<Empty title="没有找到匹配的客户" detail="试试其他姓名、手机号或筛选条件。" action={<Button variant="outline" onClick={()=>{setQuery("");setFilter("all");}}>清除筛选</Button>}/>}</section></>;
+}
